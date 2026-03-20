@@ -19,6 +19,9 @@ export const metadata: Metadata = {
   title: "GigShield — AI-Powered Insurance for Gig Workers",
   description:
     "Automatic income protection during disruptions. AI-powered coverage for delivery drivers, ride-share workers, and freelancers.",
+  icons: {
+    icon: "/icon.png",
+  },
 };
 
 export default function RootLayout({
