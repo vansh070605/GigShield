@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GigShield AI
 
-## Getting Started
+GigShield AI is a parametric insurance platform for gig workers (delivery partners). This MVP features a completely integrated stack with a Next.js Full Stack Frontend, FastAPI backend, PostgreSQL Database, ML Models for Premium Calculation (scikit-learn), and fully working JWT Authentication, Policy creation, and Claims management!
 
-First, run the development server:
+## Step-by-Step Instructions to Run Locally
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### 1. Setup Backend
+1. Open a new terminal and navigate to the `backend` directory.
+   ```bash
+   cd backend
+   ```
+2. Activate the virtual environment (created during setup):
+   ```bash
+   .\venv\Scripts\activate
+   ```
+3. Run the FastAPI server:
+   ```bash
+   uvicorn main:app --reload
+   ```
+   *The backend will run on http://localhost:8000. It is connected to the `gigshield` PostgreSQL database which we have already seeded with test data.*
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Setup Frontend
+1. Open a **second** terminal and ensure you are in the root directory (`GigShield`).
+2. Run the Next.js development server:
+   ```bash
+   npm run dev
+   ```
+   *The frontend will start on http://localhost:3000.*
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Using the App
+1. Open [http://localhost:3000](http://localhost:3000) in your browser.
+2. Click **Login** and use the seeded account:
+   - **Email:** `test@gigshield.com`
+   - **Password:** `password123`
+3. Check out the **Dashboard** which securely fetches data from the backend.
+4. Go to **Subscribe** to select a parametric policy plan.
+5. Visit **Policies** to see your active subscriptions.
+6. Visit **Claims** to see parametric payouts (auto-triggers) or to file a manual claim.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Everything works end-to-end natively! Real database, real JWT Auth, real API connections! Enjoy!

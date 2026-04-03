@@ -14,7 +14,11 @@ import {
   Sun,
   Moon,
   Menu,
+  FileText,
+  LogOut,
+  LogIn
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -27,6 +31,8 @@ const navLinks = [
   { href: "/", label: "Home", icon: Shield },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/subscription", label: "Subscribe", icon: CreditCard },
+  { href: "/policies", label: "Policies", icon: FileText },
+  { href: "/claims", label: "Claims", icon: ShieldAlert },
   { href: "/report", label: "Report", icon: Users },
   { href: "/admin", label: "Admin", icon: ShieldAlert },
 ];
@@ -36,6 +42,7 @@ export default function Navbar() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const { user, logout } = useAuth();
 
   useEffect(() => setMounted(true), []);
 
@@ -59,9 +66,9 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-1">
           {navLinks.map((link) => {
+            if (link.href === "/admin" && user?.role !== "admin") return null;
             const isActive = pathname === link.href;
             return (
               <Link key={link.href} href={link.href}>
@@ -117,6 +124,21 @@ export default function Navbar() {
             </Button>
           )}
 
+          {/* Auth Buttons */}
+          <div className="hidden md:flex ml-2 border-l border-border/40 pl-4">
+            {user ? (
+              <Button onClick={logout} variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-red-400">
+                <LogOut className="h-4 w-4" /> Logout
+              </Button>
+            ) : (
+              <Link href="/login">
+                <Button size="sm" className="bg-gradient-to-r from-blue-500 to-teal-500 text-white gap-2">
+                  <LogIn className="h-4 w-4" /> Login
+                </Button>
+              </Link>
+            )}
+          </div>
+
           {/* Mobile Menu */}
           <div className="md:hidden">
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
@@ -138,6 +160,7 @@ export default function Navbar() {
                 </SheetTitle>
                 <div className="flex flex-col gap-2 px-4">
                   {navLinks.map((link) => {
+                    if (link.href === "/admin" && user?.role !== "admin") return null;
                     const isActive = pathname === link.href;
                     return (
                       <Link

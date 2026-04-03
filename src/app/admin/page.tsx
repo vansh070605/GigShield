@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   ShieldAlert,
@@ -8,9 +9,13 @@ import {
   Search,
   Eye,
   MapPin,
+  Check,
+  X
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { fraudClaims, clusterData, type FraudClaim } from "@/data/mockData";
+import { Button } from "@/components/ui/button";
+import { apiCall } from "@/lib/api";
+import { toast } from "sonner";
 import {
   BarChart,
   Bar,
@@ -22,57 +27,66 @@ import {
   Legend,
 } from "recharts";
 
-const trustColors = {
-  high: { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20", label: "High Trust" },
-  medium: { bg: "bg-amber-500/10", text: "text-amber-400", border: "border-amber-500/20", label: "Medium Trust" },
-  low: { bg: "bg-red-500/10", text: "text-red-400", border: "border-red-500/20", label: "Low Trust" },
-};
-
-const statusColors = {
+const statusColors: any = {
   investigating: { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/20" },
   cleared: { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20" },
   flagged: { bg: "bg-red-500/10", text: "text-red-400", border: "border-red-500/20" },
+  pending: { bg: "bg-amber-500/10", text: "text-amber-400", border: "border-amber-500/20" },
 };
 
 export default function AdminPage() {
-  const flaggedCount = fraudClaims.filter((c) => c.status === "flagged").length;
-  const investigatingCount = fraudClaims.filter((c) => c.status === "investigating").length;
-  const clearedCount = fraudClaims.filter((c) => c.status === "cleared").length;
+  const [stats, setStats] = useState({ flagged: 0, investigating: 0, cleared: 0 });
+  const [fraudClaims, setFraudClaims] = useState<any[]>([]);
+
+  const fetchAdminData = async () => {
+    try {
+      const statsData = await apiCall("/admin/stats");
+      const claimsData = await apiCall("/admin/fraud-claims");
+      setStats(statsData);
+      setFraudClaims(claimsData);
+    } catch (e) {
+      toast.error("Failed to load admin data");
+    }
+  };
+
+  useEffect(() => {
+    fetchAdminData();
+  }, []);
+
+  const handleAction = async (claimId: number, action: "approve" | "reject") => {
+    try {
+      await apiCall(`/admin/claims/${claimId}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          status: action === "approve" ? "approved" : "rejected",
+          fraud_flag: action === "approve" ? "cleared" : "flagged"
+        })
+      });
+      toast.success(`Claim ${action === 'approve' ? 'approved' : 'rejected'} successfully.`);
+      fetchAdminData();
+    } catch (e: any) {
+      toast.error(e.message || `Failed to ${action} claim`);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="mb-8"
-      >
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
         <h1 className="text-3xl font-bold mb-2">
-          Fraud{" "}
-          <span className="bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">
-            Monitoring
-          </span>
+          Fraud <span className="bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">Monitoring</span>
         </h1>
-        <p className="text-muted-foreground">
-          AI-powered fraud detection dashboard. Monitor claims and anomalies in real-time.
-        </p>
+        <p className="text-muted-foreground">Admin panel to manually review flagged and investigated claims.</p>
       </motion.div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         {[
-          { label: "Flagged Claims", value: flaggedCount, icon: AlertTriangle, color: "text-red-400", bg: "from-red-500/10 to-red-500/5" },
-          { label: "Under Investigation", value: investigatingCount, icon: Search, color: "text-blue-400", bg: "from-blue-500/10 to-blue-500/5" },
-          { label: "Cleared Claims", value: clearedCount, icon: CheckCircle2, color: "text-emerald-400", bg: "from-emerald-500/10 to-emerald-500/5" },
+          { label: "Flagged Claims", value: stats.flagged, icon: AlertTriangle, color: "text-red-400", bg: "from-red-500/10 to-red-500/5" },
+          { label: "Under Investigation", value: stats.investigating, icon: Search, color: "text-blue-400", bg: "from-blue-500/10 to-blue-500/5" },
+          { label: "Cleared Claims", value: stats.cleared, icon: CheckCircle2, color: "text-emerald-400", bg: "from-emerald-500/10 to-emerald-500/5" },
         ].map((card, i) => (
-          <motion.div
-            key={card.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: i * 0.1 }}
-            className={`rounded-2xl border border-border/40 bg-gradient-to-br ${card.bg} backdrop-blur-sm p-6`}
-          >
+          <motion.div key={card.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={`rounded-2xl border border-border/40 bg-gradient-to-br ${card.bg} backdrop-blur-sm p-6`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">{card.label}</p>
@@ -84,145 +98,63 @@ export default function AdminPage() {
         ))}
       </div>
 
-      {/* Cluster Chart + Claims Table */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Cluster Chart */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="rounded-2xl border border-border/40 bg-card/50 backdrop-blur-sm p-6"
-        >
-          <h3 className="text-lg font-semibold mb-6">Claims by Region</h3>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={clusterData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                <XAxis
-                  dataKey="region"
-                  tick={{ fontSize: 12 }}
-                  stroke="hsl(var(--muted-foreground))"
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 12 }}
-                  stroke="hsl(var(--muted-foreground))"
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    borderColor: "hsl(var(--border))",
-                    borderRadius: "1rem",
-                    fontSize: 13,
-                  }}
-                />
-                <Legend />
-                <Bar dataKey="cleared" fill="#10b981" stackId="a" name="Cleared" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="investigating" fill="#3b82f6" stackId="a" name="Investigating" />
-                <Bar dataKey="flagged" fill="#ef4444" stackId="a" name="Flagged" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </motion.div>
-
-        {/* Trust Score Distribution */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="rounded-2xl border border-border/40 bg-card/50 backdrop-blur-sm p-6"
-        >
-          <h3 className="text-lg font-semibold mb-6">Anomaly Overview</h3>
-          <div className="space-y-4">
-            {fraudClaims
-              .filter((c) => c.anomalyIndicators.length > 0)
-              .map((claim) => {
-                const trust = trustColors[claim.trustScore];
-                return (
-                  <div
-                    key={claim.id}
-                    className="rounded-xl border border-border/30 bg-background/50 p-4"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-sm">{claim.claimantName}</span>
-                      <Badge
-                        variant="outline"
-                        className={`${trust.bg} ${trust.text} ${trust.border} text-xs`}
-                      >
-                        {trust.label}
-                      </Badge>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {claim.anomalyIndicators.map((indicator) => (
-                        <span
-                          key={indicator}
-                          className="inline-flex items-center gap-1 rounded-lg bg-red-500/5 border border-red-500/10 px-2 py-1 text-xs text-red-400"
-                        >
-                          <AlertTriangle className="h-3 w-3" />
-                          {indicator}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        </motion.div>
-      </div>
-
       {/* Claims Table */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
-        className="rounded-2xl border border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden"
-      >
-        <div className="p-6 border-b border-border/40">
-          <h3 className="text-lg font-semibold">All Claims</h3>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden">
+        <div className="p-6 border-b border-border/40 flex justify-between items-center">
+          <h3 className="text-lg font-semibold">Claims Requiring Review</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-border/40">
-                <th className="text-left p-4 text-sm font-medium text-muted-foreground">Claimant</th>
-                <th className="text-left p-4 text-sm font-medium text-muted-foreground">Region</th>
-                <th className="text-left p-4 text-sm font-medium text-muted-foreground">Amount</th>
-                <th className="text-left p-4 text-sm font-medium text-muted-foreground">Trust Score</th>
-                <th className="text-left p-4 text-sm font-medium text-muted-foreground">Status</th>
-                <th className="text-left p-4 text-sm font-medium text-muted-foreground">Date</th>
+                <th className="text-left p-4 text-sm font-medium text-muted-foreground w-24">Claim ID</th>
+                <th className="text-left p-4 text-sm font-medium text-muted-foreground w-32">Amount</th>
+                <th className="text-left p-4 text-sm font-medium text-muted-foreground w-1/3">Reason</th>
+                <th className="text-left p-4 text-sm font-medium text-muted-foreground">Status / AI Fraud Level</th>
+                <th className="text-left p-4 text-sm font-medium text-muted-foreground">AI Score</th>
+                <th className="text-right p-4 text-sm font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
               {fraudClaims.map((claim) => {
-                const trust = trustColors[claim.trustScore];
-                const status = statusColors[claim.status];
+                const fraudStatus = statusColors[claim.fraud_flag] || statusColors.investigating;
                 return (
                   <tr key={claim.id} className="border-b border-border/20 hover:bg-muted/30 transition-colors">
-                    <td className="p-4 text-sm font-medium">{claim.claimantName}</td>
+                    <td className="p-4 text-sm font-medium">CLM-{claim.id}</td>
+                    <td className="p-4 text-sm font-medium">₹{claim.amount.toLocaleString()}</td>
+                    <td className="p-4">
+                      <p className="text-sm truncate max-w-xs" title={claim.reason}>{claim.reason}</p>
+                    </td>
+                    <td className="p-4">
+                      <Badge variant="outline" className={`${fraudStatus.bg} ${fraudStatus.text} ${fraudStatus.border} text-xs capitalize`}>
+                        {claim.fraud_flag === "cleared" ? "Pending (Cleared by AI)" : claim.fraud_flag}
+                      </Badge>
+                    </td>
                     <td className="p-4 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {claim.region}
-                      </span>
+                       {(claim.fraud_score * 100).toFixed(1)}% Suspicious
                     </td>
-                    <td className="p-4 text-sm font-medium">₹{claim.claimAmount.toLocaleString()}</td>
-                    <td className="p-4">
-                      <Badge variant="outline" className={`${trust.bg} ${trust.text} ${trust.border} text-xs`}>
-                        {trust.label}
-                      </Badge>
+                    <td className="p-4 text-right">
+                      {claim.status === "pending" || claim.status === "investigating" || claim.status === "flagged" ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <Button size="sm" onClick={() => handleAction(claim.id, "approve")} className="bg-emerald-500 hover:bg-emerald-600 text-white gap-1 h-8">
+                            <Check className="h-3 w-3" /> Approve
+                          </Button>
+                          <Button size="sm" onClick={() => handleAction(claim.id, "reject")} variant="destructive" className="gap-1 h-8">
+                            <X className="h-3 w-3" /> Reject
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground capitalize">{claim.status}</span>
+                      )}
                     </td>
-                    <td className="p-4">
-                      <Badge variant="outline" className={`${status.bg} ${status.text} ${status.border} text-xs capitalize`}>
-                        {claim.status}
-                      </Badge>
-                    </td>
-                    <td className="p-4 text-sm text-muted-foreground">{claim.claimDate}</td>
                   </tr>
                 );
               })}
+              {fraudClaims.length === 0 && (
+                <tr>
+                   <td colSpan={5} className="p-8 text-center text-muted-foreground">No claims require manual review right now.</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
